@@ -68,6 +68,7 @@ public class Cheese.MainWindow : Gtk.Window
   private Clutter.Text      countdown_layer;
   private Clutter.Rectangle background_layer;
   private Clutter.Text      error_layer;
+  private Clutter.Text      recording_marker_layer;
 
   private Clutter.Box           current_effects_grid;
   private int                current_effects_page = 0;
@@ -759,6 +760,7 @@ public class Cheese.MainWindow : Gtk.Window
   {
     if (is_start)
     {
+      recording_marker_layer.show ();
       camera.start_video_recording (fileutil.get_new_media_filename (this.current_mode));
       take_action_button_label.label = "<b>" + _("Stop _Recording") + "</b>";
       take_action_button.tooltip_text = "Stop recording";
@@ -768,6 +770,7 @@ public class Cheese.MainWindow : Gtk.Window
     }
     else
     {
+      recording_marker_layer.hide ();
       camera.stop_video_recording ();
       take_action_button_label.label = "<b>" + take_action_button.related_action.label + "</b>";
       take_action_button.tooltip_text = take_action_button.related_action.tooltip;
@@ -1175,12 +1178,14 @@ public class Cheese.MainWindow : Gtk.Window
     countdown_layer         = (Clutter.Text)clutter_builder.get_object ("countdown_layer");
     background_layer        = (Clutter.Rectangle)clutter_builder.get_object ("background");
     error_layer             = (Clutter.Text)clutter_builder.get_object ("error_layer");
+    recording_marker_layer  = (Clutter.Text)clutter_builder.get_object ("recording_marker_layer");
 
     video_preview.keep_aspect_ratio = true;
     video_preview.request_mode      = Clutter.RequestMode.HEIGHT_FOR_WIDTH;
     viewport.add_actor (background_layer);
     viewport_layout.set_layout_manager (viewport_layout_manager);
 
+    recording_marker_layer.hide ();
     viewport.add_actor (viewport_layout);
 
     viewport.allocation_changed.connect (on_stage_resize);

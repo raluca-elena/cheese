@@ -33,13 +33,24 @@
   "visible": false
 },
 {
+  "id": "recording_marker_layer",
+  "type": "ClutterText",
+  "child::x-align": "CLUTTER_BIN_ALIGNMENT_END",
+  "child::y-align": "CLUTTER_BIN_ALIGNMENT_START",
+  "text": "•REC",
+  "font-name": "Sans 30px",
+  "opacity": 255,
+  "color": "Red"
+},
+{
   "id": "viewport_layout",
   "type": "ClutterBox",
   "children":
   [
     'video_preview',
     'countdown_layer',
-    'error_layer'
+    'error_layer',
+    'recording_marker_layer'
   ]
 },
 {
