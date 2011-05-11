@@ -1200,10 +1200,13 @@ cheese_camera_setup (CheeseCamera *camera, const char *id, GError **error)
 
   /* Create a clutter-gst sink and set it as camerabin sink*/
 
+printf("BEFORE clutter_gst_video_sink_new"); fflush(stdout);
   if ((video_sink = clutter_gst_video_sink_new (priv->video_texture)) == NULL)
   {
     cheese_camera_set_error_element_not_found (error, "cluttervideosink");
   }
+printf("AFTER  clutter_gst_video_sink_new"); fflush(stdout);
+
   g_object_set (G_OBJECT (video_sink), "async", FALSE, NULL);
   g_object_set (G_OBJECT (priv->camerabin), "viewfinder-sink", video_sink, NULL);
 

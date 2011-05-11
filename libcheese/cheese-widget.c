@@ -324,18 +324,18 @@ setup_camera (CheeseWidget *widget)
   g_settings_get (priv->settings, "saturation",   "d", &saturation);
   g_settings_get (priv->settings, "hue",          "d", &hue);
 
-  gdk_threads_enter ();
+//  gdk_threads_enter ();
   priv->webcam = cheese_camera_new (CLUTTER_TEXTURE (priv->texture),
                                     webcam_device,
                                     x_resolution,
                                     y_resolution);
-  gdk_threads_leave ();
+//  gdk_threads_leave ();
 
   g_free (webcam_device);
 
   cheese_camera_setup (priv->webcam, NULL, &priv->error);
 
-  gdk_threads_enter ();
+//  gdk_threads_enter ();
 
   gtk_spinner_stop (GTK_SPINNER (priv->spinner));
 
@@ -357,7 +357,7 @@ setup_camera (CheeseWidget *widget)
     gtk_notebook_set_current_page (GTK_NOTEBOOK (widget), WEBCAM_PAGE);
   }
 
-  gdk_threads_leave ();
+//  gdk_threads_leave ();
 }
 
 static void

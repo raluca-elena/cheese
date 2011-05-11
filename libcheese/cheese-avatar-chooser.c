@@ -70,7 +70,7 @@ cheese_widget_photo_taken_cb (CheeseCamera        *camera,
   CheeseAvatarChooserPrivate *priv = CHEESE_AVATAR_CHOOSER_GET_PRIVATE (chooser);
   GtkAllocation               allocation;
 
-  gdk_threads_enter ();
+  //gdk_threads_enter ();
 
   gtk_widget_get_allocation (priv->camera, &allocation);
   gtk_widget_set_size_request (priv->image, allocation.width, allocation.height);
@@ -81,7 +81,7 @@ cheese_widget_photo_taken_cb (CheeseCamera        *camera,
                                      GTK_RESPONSE_ACCEPT,
                                      TRUE);
 
-  gdk_threads_leave ();
+  //gdk_threads_leave ();
 
   g_object_notify (G_OBJECT (chooser), "pixbuf");
 }
