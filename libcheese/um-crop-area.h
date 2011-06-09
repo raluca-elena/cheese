@@ -34,6 +34,8 @@ G_BEGIN_DECLS
 #define UM_IS_CROP_AREA_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), UM_TYPE_CROP_AREA))
 #define UM_CROP_AREA_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), UM_TYPE_CROP_AREA, \
                                                                           UmCropAreaClass))
+#define UM_CROP_AREA_MIN_WIDTH 48
+#define UM_CROP_AREA_MIN_HEIGHT 48
 
 typedef struct _UmCropAreaClass UmCropAreaClass;
 typedef struct _UmCropArea UmCropArea;

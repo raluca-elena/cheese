@@ -730,8 +730,8 @@ um_crop_area_init (UmCropArea *area)
         area->priv->image.width = 0;
         area->priv->image.height = 0;
         area->priv->active_region = OUTSIDE;
-        area->priv->base_width = 48;
-        area->priv->base_height = 48;
+        area->priv->base_width = UM_CROP_AREA_MIN_WIDTH;
+        area->priv->base_height = UM_CROP_AREA_MIN_HEIGHT;
         area->priv->aspect = 1;
 }
 
