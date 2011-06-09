@@ -36,7 +36,9 @@ enum
 enum
 {
   PROP_0,
-  PROP_PIXBUF
+  PROP_PIXBUF,
+  PROP_MIN_HEIGHT,
+  PROP_MIN_WIDTH,
 };
 
 enum
@@ -54,6 +56,8 @@ typedef struct
   GtkWidget *take_again_button;
   CheeseFlash *flash;
   gulong photo_taken_id;
+  guint min_height;
+  guint min_width;
 } CheeseAvatarChooserPrivate;
 
 #define CHEESE_AVATAR_CHOOSER_GET_PRIVATE(o)                     \
@@ -76,6 +80,7 @@ cheese_widget_photo_taken_cb (CheeseCamera        *camera,
   gtk_widget_set_size_request (priv->image, allocation.width, allocation.height);
 
   um_crop_area_set_picture (UM_CROP_AREA (priv->image), pixbuf);
+  um_crop_area_set_min_size (priv->image, priv->min_height, priv->min_width);
   gtk_notebook_set_current_page (GTK_NOTEBOOK (priv->notebook), IMAGE_PAGE);
   gtk_dialog_set_response_sensitive (GTK_DIALOG (chooser),
                                      GTK_RESPONSE_ACCEPT,
@@ -202,6 +207,9 @@ cheese_avatar_chooser_init (CheeseAvatarChooser *chooser)
 
   CheeseAvatarChooserPrivate *priv = CHEESE_AVATAR_CHOOSER_GET_PRIVATE (chooser);
 
+  priv->min_height = UM_CROP_AREA_MIN_HEIGHT;
+  priv->min_width = UM_CROP_AREA_MIN_WIDTH;
+
   priv->flash = cheese_flash_new (GTK_WIDGET (chooser));
 
   gtk_dialog_add_buttons (GTK_DIALOG (chooser),
@@ -281,7 +289,33 @@ cheese_avatar_chooser_get_property (GObject *object, guint prop_id,
     case PROP_PIXBUF:
       g_value_set_object (value, um_crop_area_get_picture (UM_CROP_AREA (priv->image)));
       break;
+    case PROP_MIN_HEIGHT:
+      g_value_set_uint (value, priv->min_height);
+      break;
+    case PROP_MIN_WIDTH:
+      g_value_set_uint (value, priv->min_width);
+      break;
     default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+}
+static void
+cheese_avatar_chooser_set_property (GObject *object, guint prop_id,
+                                    const GValue *value, GParamSpec *pspec)
+{
+  CheeseAvatarChooserPrivate *priv = CHEESE_AVATAR_CHOOSER_GET_PRIVATE (object);
+
+  switch (prop_id)
+  {
+    case PROP_MIN_HEIGHT:
+      priv->min_height = g_value_get_uint (value);
+      break;
+    case PROP_MIN_WIDTH:
+      priv->min_width = g_value_get_uint (value);
+      break;
+    default:
+      /* We don't have any other property... */
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
@@ -294,6 +328,7 @@ cheese_avatar_chooser_class_init (CheeseAvatarChooserClass *klass)
 
   object_class->finalize     = cheese_avatar_chooser_finalize;
   object_class->get_property = cheese_avatar_chooser_get_property;
+  object_class->set_property = cheese_avatar_chooser_set_property;
 
   /**
    * CheeseAvatarChooser:pixbuf:
@@ -307,6 +342,24 @@ cheese_avatar_chooser_class_init (CheeseAvatarChooserClass *klass)
                                                         "a GdkPixbuf object",
                                                         GDK_TYPE_PIXBUF,
                                                         G_PARAM_READABLE));
+
+  g_object_class_install_property (object_class, PROP_MIN_HEIGHT,
+                                   g_param_spec_uint ("min-height",
+						      "Crop area minimum height",
+						      "Set/Get crop area min height",
+						      1,
+						      G_MAXUINT,
+						      UM_CROP_AREA_MIN_HEIGHT,
+						      G_PARAM_READWRITE));
+
+  g_object_class_install_property (object_class, PROP_MIN_WIDTH,
+                                   g_param_spec_uint ("min-width",
+						      "Crop area minimum width",
+						      "Set/Get crop area min width",
+						      1,
+						      G_MAXUINT,
+						      UM_CROP_AREA_MIN_WIDTH,
+						      G_PARAM_READWRITE));
 
   g_type_class_add_private (klass, sizeof (CheeseAvatarChooserPrivate));
 }
