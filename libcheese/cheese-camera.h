@@ -72,6 +72,9 @@ void                     cheese_camera_setup (CheeseCamera *camera, const char *
 void                     cheese_camera_play (CheeseCamera *camera);
 void                     cheese_camera_stop (CheeseCamera *camera);
 void                     cheese_camera_set_effect (CheeseCamera *camera, CheeseEffect *effect);
+void                     cheese_camera_preview_set_size (CheeseCamera *camera,
+                                                         int            width,
+                                                         int            height);
 void                     cheese_camera_connect_effect_texture (CheeseCamera   *camera,
                                                                CheeseEffect   *effect,
                                                                ClutterTexture *texture);

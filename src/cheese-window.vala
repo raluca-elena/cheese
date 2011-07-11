@@ -32,6 +32,9 @@ using CanberraGtk;
 const int FULLSCREEN_TIMEOUT_INTERVAL = 5 * 1000;
 const int EFFECTS_PER_PAGE            = 9;
 
+const int PREVIEW_COLUMN_SPACING = 10;
+const int PREVIEW_ROW_SPACING    = 10;
+
 public class Cheese.MainWindow : Gtk.Window
 {
   private MediaMode current_mode;
@@ -638,6 +641,19 @@ public class Cheese.MainWindow : Gtk.Window
     viewport_widget.set_size_request (-1, -1);
   }
 
+  public void on_preview_resize (Clutter.Actor           actor,
+                                 Clutter.ActorBox        box,
+                                 Clutter.AllocationFlags flags)
+  {
+    int height = (int) (box.y2 - box.y1);
+    int width  = (int) (box.x2 - box.x1);
+
+    stdout.printf("on_preview_resize width=%d, height=%d\n", width, height);
+
+    if (this.camera != null)
+      this.camera.preview_set_size (width, height);
+  }
+
   /* To make sure that the layout manager manages the entire stage. */
   public void on_stage_resize (Clutter.Actor           actor,
                                Clutter.ActorBox        box,
@@ -645,6 +661,12 @@ public class Cheese.MainWindow : Gtk.Window
   {
     this.viewport_layout.set_size (viewport.width, viewport.height);
     this.background_layer.set_size (viewport.width, viewport.height);
+    /*
+    if (this.camera != null)
+      this.camera.preview_set_size ((int) (viewport.width  - 2 * PREVIEW_COLUMN_SPACING) / 3,
+                                    (int) (viewport.height - 2 * PREVIEW_COLUMN_SPACING) / 3);
+
+    */
   }
 
   [CCode (instance_pos = -1)]
@@ -963,8 +985,8 @@ public class Cheese.MainWindow : Gtk.Window
         Clutter.TableLayout table_layout = new TableLayout ();
         Clutter.Box grid = new Clutter.Box (table_layout);
         effects_grids.add (grid);
-        table_layout.set_column_spacing (10);
-        table_layout.set_row_spacing (10);
+        table_layout.set_column_spacing (PREVIEW_COLUMN_SPACING);
+        table_layout.set_row_spacing (PREVIEW_ROW_SPACING);
       }
 
       for (int i = 0; i < effects_manager.effects.size; i++)
@@ -981,6 +1003,7 @@ public class Cheese.MainWindow : Gtk.Window
         rect.color   = Clutter.Color.from_string ("black");
 
         texture.keep_aspect_ratio = true;
+        texture.allocation_changed.connect (on_preview_resize);
         box.pack ((Clutter.Actor) texture, null, null);
         box.reactive = true;
         box.set_data ("effect", effect);

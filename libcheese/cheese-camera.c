@@ -80,6 +80,8 @@ typedef struct
   GstElement *effect_filter;
   GstElement *video_balance, *csp_post_balance;
   GstElement *camera_tee, *effects_tee;
+  GstElement *effects_videoscale;
+  GstElement *effects_size_flt;
   GstElement *main_valve, *effects_valve;
 
   GstCaps *preview_caps;
@@ -403,7 +405,6 @@ cheese_camera_create_effects_preview_bin (CheeseCamera *camera, GError **error)
 
   gboolean ok = TRUE;
   GstPad  *pad;
-  GError  *err = NULL;
 
   priv->effects_preview_bin = gst_bin_new ("effects_preview_bin");
 
@@ -416,14 +417,27 @@ cheese_camera_create_effects_preview_bin (CheeseCamera *camera, GError **error)
     cheese_camera_set_error_element_not_found (error, "effects_valve");
   }
 
+
+  if ((priv->effects_videoscale = gst_element_factory_make ("videoscale", "effects_videoscale")) == NULL)
+  {
+    cheese_camera_set_error_element_not_found (error, "effects_videoscale");
+  }
+  if ((priv->effects_size_flt = gst_element_factory_make ("capsfilter", "effects_size_flt")) == NULL)
+  {
+    cheese_camera_set_error_element_not_found (error, "effects_size_flt");
+  }
+
   if (error != NULL && *error != NULL)
     return FALSE;
 
+  gst_object_ref (priv->effects_videoscale);
+  gst_object_ref (priv->effects_size_flt);
   gst_bin_add_many (GST_BIN (priv->effects_preview_bin),
-		    priv->effects_valve, priv->effects_tee, NULL);
+                    priv->effects_valve, priv->effects_videoscale,
+                    priv->effects_size_flt, priv->effects_tee, NULL);
 
-  ok &= gst_element_link_many (priv->effects_valve, priv->effects_tee, NULL);
-
+  ok &= gst_element_link_many (priv->effects_valve, priv->effects_videoscale,
+                               priv->effects_size_flt, priv->effects_tee, NULL);
   /* add ghostpads */
 
   pad = gst_element_get_static_pad (priv->effects_valve, "sink");
@@ -682,6 +696,85 @@ cheese_camera_element_from_effect (CheeseCamera *camera, CheeseEffect *effect)
 
   return effect_filter;
 }
+
+
+void
+xxx_cheese_camera_preview_set_size (CheeseCamera *camera,
+                                int           width,
+                                int           height)
+{
+  CheeseCameraPrivate *priv = CHEESE_CAMERA_GET_PRIVATE (camera);
+  GstCaps *caps;
+  GstPad  *pad;
+  GValue   val;
+  gboolean ret;
+
+  if (!priv->effects_size_flt || !priv->effects_videoscale)
+    return;
+
+  memset (&val, 0, sizeof (val));
+
+  pad = gst_element_get_static_pad (priv->effects_videoscale, "src");
+  caps = gst_pad_get_negotiated_caps(pad);
+  caps = gst_caps_make_writable (caps);
+
+  g_printf("before width\n");
+  g_value_init (&val, G_TYPE_INT);
+  g_value_set_int (&val, width);
+  gst_caps_set_value (caps, "width", &val);
+  g_value_unset (&val);
+
+  g_printf("before height\n");
+  g_value_init (&val, G_TYPE_INT);
+  g_value_set_int(&val, height);
+  gst_caps_set_value (caps, "height", &val);
+  g_value_unset (&val);
+
+  ret = gst_pad_set_caps (pad, caps);
+
+  g_printf("before end gst_pad_set_caps ret=%d\n", ret);
+  gst_caps_unref(caps);
+  gst_object_unref(pad);
+}
+
+void
+cheese_camera_preview_set_size (CheeseCamera *camera,
+                                int           width,
+                                int           height)
+{
+  CheeseCameraPrivate *priv = CHEESE_CAMERA_GET_PRIVATE (camera);
+  GstCaps *caps;
+  GstPad  *pad;
+  GValue   val;
+  gboolean ret;
+
+  if (!priv->effects_size_flt)
+    return;
+
+  memset (&val, 0, sizeof (val));
+
+  g_object_get_property (priv->effects_size_flt, "caps", &
+
+  caps = gst_pad_get_negotiated_caps(pad);
+  caps = gst_caps_make_writable (caps);
+
+  g_printf("before width\n");
+  g_value_init (&val, G_TYPE_INT);
+  g_value_set_int (&val, width);
+  gst_caps_set_value (caps, "width", &val);
+  g_value_unset (&val);
+
+  g_printf("before height\n");
+  g_value_init (&val, G_TYPE_INT);
+  g_value_set_int(&val, height);
+  gst_caps_set_value (caps, "height", &val);
+  g_value_unset (&val);
+
+
+  g_printf("before end gst_pad_set_caps ret=%d\n", ret);
+  gst_caps_unref(caps);
+}
+
 
 /**
  * cheese_camera_set_effect:
@@ -945,6 +1038,11 @@ cheese_camera_finalize (GObject *object)
 
   if (priv->camerabin != NULL)
     gst_object_unref (priv->camerabin);
+
+  if (priv->effects_size_flt != NULL)
+    gst_object_unref (priv->effects_size_flt);
+  if (priv->effects_videoscale != NULL)
+    gst_object_unref (priv->effects_videoscale);
 
   if (priv->photo_filename)
     g_free (priv->photo_filename);
