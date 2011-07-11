@@ -971,8 +971,8 @@ public class Cheese.MainWindow : Gtk.Window
       {
         Effect            effect  = effects_manager.effects[i];
         Clutter.Texture   texture = new Clutter.Texture ();
-        Clutter.BinLayout layout  = new Clutter.BinLayout (Clutter.BinAlignment.CENTER,
-                                                           Clutter.BinAlignment.CENTER);
+        Clutter.BinLayout layout  = new Clutter.BinLayout (Clutter.BinAlignment.FILL,
+                                                           Clutter.BinAlignment.FILL);
         Clutter.Box       box  = new Clutter.Box (layout);
         Clutter.Text      text = new Clutter.Text ();
         Clutter.Rectangle rect = new Clutter.Rectangle ();
@@ -1004,7 +1004,8 @@ public class Cheese.MainWindow : Gtk.Window
         table_layout.pack ((Clutter.Actor) box,
                            (i % EFFECTS_PER_PAGE) % 3,
                            (i % EFFECTS_PER_PAGE) / 3);
-        table_layout.set_expand (box, false, false);
+        table_layout.set_expand (box, true, true);
+        table_layout.set_fill (box, true, true);
       }
 
       setup_effects_page_switch_sensitivity ();

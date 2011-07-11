@@ -417,7 +417,7 @@ cheese_camera_create_effects_preview_bin (CheeseCamera *camera, GError **error)
     cheese_camera_set_error_element_not_found (error, "effects_valve");
   }
   priv->effects_downscaler = gst_parse_bin_from_description (
-    "videoscale ! video/x-raw-yuv,width=40,height=30 ! ffmpegcolorspace",
+    "videoscale ! video/x-raw-yuv,width=120,height=19 ! ffmpegcolorspace",
     TRUE,
     &err);
   if (priv->effects_downscaler == NULL || err != NULL)
