@@ -80,6 +80,7 @@ typedef struct
   GstElement *effect_filter;
   GstElement *video_balance, *csp_post_balance;
   GstElement *camera_tee, *effects_tee;
+  GstCaps    *effects_preview_caps;
   GstElement *main_valve, *effects_valve;
 
   GstCaps *preview_caps;
@@ -400,10 +401,11 @@ static gboolean
 cheese_camera_create_effects_preview_bin (CheeseCamera *camera, GError **error)
 {
   CheeseCameraPrivate *priv = CHEESE_CAMERA_GET_PRIVATE (camera);
+  GstElement          *effects_videoscale;
+  GstElement          *effects_size_flt;
 
   gboolean ok = TRUE;
   GstPad  *pad;
-  GError  *err = NULL;
 
   priv->effects_preview_bin = gst_bin_new ("effects_preview_bin");
 
@@ -416,13 +418,29 @@ cheese_camera_create_effects_preview_bin (CheeseCamera *camera, GError **error)
     cheese_camera_set_error_element_not_found (error, "effects_valve");
   }
 
+  if ((effects_videoscale = gst_element_factory_make ("videoscale", "effects_videoscale")) == NULL)
+  {
+    cheese_camera_set_error_element_not_found (error, "effects_videoscale");
+  }
+  if ((effects_size_flt = gst_element_factory_make ("capsfilter", "effects_size_flt")) == NULL)
+  {
+    cheese_camera_set_error_element_not_found (error, "effects_size_flt");
+  }
+  if ((priv->effects_preview_caps = gst_caps_new_simple ("video/x-raw-yuv", NULL)) == NULL)
+  {
+    cheese_camera_set_error_element_not_found (error, "effects_preview_caps");
+  }
+
   if (error != NULL && *error != NULL)
     return FALSE;
 
   gst_bin_add_many (GST_BIN (priv->effects_preview_bin),
-		    priv->effects_valve, priv->effects_tee, NULL);
+                    priv->effects_valve, effects_videoscale,
+                    effects_size_flt, priv->effects_tee, NULL);
 
-  ok &= gst_element_link_many (priv->effects_valve, priv->effects_tee, NULL);
+  ok &= gst_element_link (priv->effects_valve, effects_videoscale);
+  ok &= gst_element_link (effects_videoscale, effects_size_flt);
+  ok &= gst_element_link_filtered (effects_size_flt, priv->effects_tee, priv->effects_preview_caps);
 
   /* add ghostpads */
 
@@ -682,6 +700,31 @@ cheese_camera_element_from_effect (CheeseCamera *camera, CheeseEffect *effect)
 
   return effect_filter;
 }
+
+
+void
+cheese_camera_preview_set_size (CheeseCamera *camera,
+                                int           width,
+                                int           height)
+{
+  CheeseCameraPrivate *priv = CHEESE_CAMERA_GET_PRIVATE (camera);
+
+  GstStructure *str;
+  GstCaps      *caps;
+
+  if (!priv->effects_preview_caps)
+    return;
+
+  //caps = gst_caps_make_writable (priv->effects_preview_caps);
+  caps = priv->effects_preview_caps;
+  str = gst_caps_get_structure (caps, 0);
+
+  gst_structure_set (str, "width",  G_TYPE_INT, width,  NULL);
+  gst_structure_set (str, "height", G_TYPE_INT, height, NULL);
+
+  g_printf("before end gst_pad_set_caps w=%d h=%d\n", width, height);
+}
+
 
 /**
  * cheese_camera_set_effect:
