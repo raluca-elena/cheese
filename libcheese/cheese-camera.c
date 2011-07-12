@@ -70,6 +70,7 @@ typedef struct
   GstElement *effects_preview_bin;
 
   GstElement *video_source;
+  GstElement *camera_source;
   GstElement *video_file_sink;
   GstElement *audio_source;
   GstElement *audio_enc;
@@ -199,7 +200,7 @@ cheese_camera_bus_message_cb (GstBus *bus, GstMessage *message, CheeseCamera *ca
     }
     case GST_MESSAGE_STATE_CHANGED:
     {
-      if (strcmp (GST_MESSAGE_SRC_NAME (message), "camerabin") == 0)
+      if (strcmp (GST_MESSAGE_SRC_NAME (message), "camerabin2") == 0)
       {
         GstState old, new;
         gst_message_parse_state_changed (message, &old, &new, NULL);
@@ -213,7 +214,7 @@ cheese_camera_bus_message_cb (GstBus *bus, GstMessage *message, CheeseCamera *ca
       const GstStructure *structure;
       GstBuffer *buffer;
       const GValue *image;
-      if (strcmp (GST_MESSAGE_SRC_NAME (message), "camerabin") == 0)
+      if (strcmp (GST_MESSAGE_SRC_NAME (message), "camerabin2") == 0)
       {
         structure = gst_message_get_structure (message);
         if (strcmp (gst_structure_get_name (structure), "preview-image") == 0)
@@ -321,7 +322,7 @@ cheese_camera_set_camera_source (CheeseCamera *camera)
   priv->video_source = gst_parse_bin_from_description (camera_input, TRUE, &err);
   g_free (camera_input);
 
-  if (priv->video_source == NULL)
+  if (priv->video_source == NULL || priv->camera_source == NULL)
   {
     if (err != NULL)
     {
@@ -330,7 +331,7 @@ cheese_camera_set_camera_source (CheeseCamera *camera)
     }
     return FALSE;
   }
-  g_object_set (priv->camerabin, "video-source", priv->video_source, NULL);
+  g_object_set (priv->camera_source, "video-source", priv->video_source, NULL);
 
   return TRUE;
 }
@@ -382,7 +383,8 @@ cheese_camera_set_video_recording (CheeseCamera *camera, GError **error)
     cheese_camera_set_error_element_not_found (error, "theoraenc");
     return;
   }
-  g_object_set (priv->camerabin, "video-encoder", video_enc, NULL);
+  //raluca:TODO: camerabin2 does not have 'video-encoder'
+  //g_object_set (priv->camerabin, "video-encoder", video_enc, NULL);
   g_object_set (G_OBJECT (video_enc), "speed-level", 2, NULL);
 
   if ((mux = gst_element_factory_make ("oggmux", "oggmux")) == NULL)
@@ -390,7 +392,8 @@ cheese_camera_set_video_recording (CheeseCamera *camera, GError **error)
     cheese_camera_set_error_element_not_found (error, "oggmux");
     return;
   }
-  g_object_set (priv->camerabin, "video-muxer", mux, NULL);
+  //raluca:TODO: camerabin2 does not have 'video-muxer'
+  //g_object_set (priv->camerabin, "video-muxer", mux, NULL);
   g_object_set (G_OBJECT (mux),
                 "max-delay", (guint64) 10000000,
                 "max-page-delay", (guint64) 10000000, NULL);
@@ -1090,6 +1093,8 @@ cheese_camera_init (CheeseCamera *camera)
   priv->device_name             = NULL;
   priv->photo_handler_signal_id = 0;
   priv->current_format          = NULL;
+  priv->camera_source           = NULL;
+  priv->video_source            = NULL;
 }
 
 /**
@@ -1190,12 +1195,15 @@ cheese_camera_setup (CheeseCamera *camera, const char *id, GError **error)
   }
 
 
-  if ((priv->camerabin = gst_element_factory_make ("camerabin", "camerabin")) == NULL)
+  if ((priv->camerabin = gst_element_factory_make ("camerabin2", "camerabin2")) == NULL)
   {
-    cheese_camera_set_error_element_not_found (error, "camerabin");
+    cheese_camera_set_error_element_not_found (error, "camerabin2");
   }
-  g_object_set (priv->camerabin, "video-capture-height", 0,
-                "video-capture-width", 0, NULL);
+  if ((priv->camera_source = gst_element_factory_make ("wrappercamerabinsrc", "camera_source")) == NULL)
+  {
+    cheese_camera_set_error_element_not_found (error, "wrappercamerabinsrc");
+  }
+  g_object_set (priv->camerabin, "camera-source", priv->camera_source, NULL);
 
   /* Create a clutter-gst sink and set it as camerabin sink*/
 
@@ -1205,23 +1213,6 @@ cheese_camera_setup (CheeseCamera *camera, const char *id, GError **error)
   }
   g_object_set (G_OBJECT (video_sink), "async", FALSE, NULL);
   g_object_set (G_OBJECT (priv->camerabin), "viewfinder-sink", video_sink, NULL);
-
-  /* Set flags to enable conversions*/
-
-  g_object_set (G_OBJECT (priv->camerabin), "flags",
-                GST_CAMERABIN_FLAG_SOURCE_RESIZE |
-                GST_CAMERABIN_FLAG_SOURCE_COLOR_CONVERSION |
-                GST_CAMERABIN_FLAG_VIEWFINDER_SCALE |
-                GST_CAMERABIN_FLAG_AUDIO_CONVERSION |
-                GST_CAMERABIN_FLAG_IMAGE_COLOR_CONVERSION |
-                GST_CAMERABIN_FLAG_VIDEO_COLOR_CONVERSION,
-                NULL);
-
-  /* Set caps to filter, so it doesn't defaults to I420 format*/
-
-  caps = gst_caps_from_string ("video/x-raw-yuv; video/x-raw-rgb");
-  g_object_set (G_OBJECT (priv->camerabin), "filter-caps", caps, NULL);
-  gst_caps_unref (caps);
 
   cheese_camera_set_camera_source (camera);
   cheese_camera_set_video_recording (camera, &tmp_error);
@@ -1234,7 +1225,12 @@ cheese_camera_setup (CheeseCamera *camera, const char *id, GError **error)
     GST_WARNING ("%s", (*error)->message);
     return;
   }
-  g_object_set (G_OBJECT (priv->camerabin), "video-source-filter", priv->video_filter_bin, NULL);
+
+  //raluca: TODO: set video-filter, preview-filter, image-filter?
+  g_object_set (G_OBJECT (priv->camerabin), "viewfinder-filter", priv->video_filter_bin, NULL);
+  //g_object_set (G_OBJECT (priv->camerabin), "video-filter", priv->video_filter_bin, NULL);
+  //g_object_set (G_OBJECT (priv->camerabin), "preview-filter", priv->video_filter_bin, NULL);
+  //g_object_set (G_OBJECT (priv->camerabin), "image-filter", priv->video_filter_bin, NULL);
 
   priv->bus = gst_element_get_bus (priv->camerabin);
   gst_bus_add_signal_watch (priv->bus);
