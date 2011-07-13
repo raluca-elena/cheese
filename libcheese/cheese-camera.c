@@ -80,8 +80,6 @@ typedef struct
 
   GstCaps *preview_caps;
 
-  gulong photo_handler_signal_id;
-
   gboolean is_recording;
   gboolean pipeline_is_playing;
   char *photo_filename;
@@ -159,6 +157,8 @@ cheese_camera_photo_data (CheeseCamera *camera, GstBuffer *buffer)
 static void
 cheese_camera_bus_message_cb (GstBus *bus, GstMessage *message, CheeseCamera *camera)
 {
+  CheeseCameraPrivate *priv = CHEESE_CAMERA_GET_PRIVATE (camera);
+
   switch (GST_MESSAGE_TYPE (message))
   {
     case GST_MESSAGE_WARNING:
@@ -226,6 +226,15 @@ cheese_camera_bus_message_cb (GstBus *bus, GstMessage *message, CheeseCamera *ca
             {
               g_warning ("Could not get buffer from bus message");
             }
+          }
+        }
+        if (strcmp (gst_structure_get_name (structure), "image-done") == 0)
+        {
+          const gchar *filename = gst_structure_get_string (structure, "filename");
+          if (priv->photo_filename != NULL && filename != NULL &&
+              (strcmp (priv->photo_filename, filename) == 0))
+          {
+            g_signal_emit (camera, camera_signals[PHOTO_SAVED], 0);
           }
         }
       }
@@ -832,18 +841,6 @@ cheese_camera_stop_video_recording (CheeseCamera *camera)
   }
 }
 
-static void
-cheese_camera_image_done_cb (GstElement *camerabin, gchar *filename,
-                             CheeseCamera *camera)
-{
-  CheeseCameraPrivate *priv = CHEESE_CAMERA_GET_PRIVATE (camera);
-  g_signal_handler_disconnect (G_OBJECT (priv->camerabin),
-                               priv->photo_handler_signal_id);
-  priv->photo_handler_signal_id = 0;
-  if (priv->photo_filename != NULL)
-    g_signal_emit (camera, camera_signals[PHOTO_SAVED], 0);
-}
-
 /**
  * cheese_camera_take_photo:
  * @camera: a #CheeseCamera
@@ -855,16 +852,14 @@ gboolean
 cheese_camera_take_photo (CheeseCamera *camera, const char *filename)
 {
   CheeseCameraPrivate *priv = CHEESE_CAMERA_GET_PRIVATE (camera);
+  gboolean             ready;
 
-  if (priv->photo_handler_signal_id != 0)
+  g_object_get (priv->camera_source, "ready-for-capture", &ready, NULL);
+  if (!ready)
   {
     GST_WARNING ("Still waiting for previous photo data, ignoring new request");
     return FALSE;
   }
-  priv->photo_handler_signal_id = g_signal_connect (G_OBJECT (priv->camerabin),
-                                                    "image-done",
-                                                    G_CALLBACK (cheese_camera_image_done_cb),
-                                                    camera);
 
   g_free (priv->photo_filename);
   priv->photo_filename = g_strdup (filename);
@@ -874,20 +869,12 @@ cheese_camera_take_photo (CheeseCamera *camera, const char *filename)
   /* Only copy the data if we're giving away a pixbuf,
    * not if we're throwing everything away straight away */
 
-  if (priv->photo_filename != NULL)
-  {
-    g_object_set (priv->camerabin, "location", priv->photo_filename, NULL);
-    g_object_set (priv->camerabin, "mode", MODE_IMAGE, NULL);
-    g_signal_emit_by_name (priv->camerabin, "start-capture", 0);
-  }
-  else
-  {
-    g_signal_handler_disconnect (G_OBJECT (priv->camerabin),
-                                 priv->photo_handler_signal_id);
-    priv->photo_handler_signal_id = 0;
+  if (priv->photo_filename == NULL)
     return FALSE;
-  }
 
+  g_object_set (priv->camerabin, "location", priv->photo_filename, NULL);
+  g_object_set (priv->camerabin, "mode", MODE_IMAGE, NULL);
+  g_signal_emit_by_name (priv->camerabin, "start-capture", 0);
   return TRUE;
 }
 
@@ -901,16 +888,15 @@ cheese_camera_take_photo_pixbuf (CheeseCamera *camera)
 {
   CheeseCameraPrivate *priv = CHEESE_CAMERA_GET_PRIVATE (camera);
   GstCaps             *caps;
+  gboolean             ready;
 
-  if (priv->photo_handler_signal_id != 0)
+  g_object_get (priv->camera_source, "ready-for-capture", &ready, NULL);
+  if (!ready)
   {
     GST_WARNING ("Still waiting for previous photo data, ignoring new request");
     return FALSE;
   }
-  priv->photo_handler_signal_id = g_signal_connect (G_OBJECT (priv->camerabin),
-                                                    "image-done",
-                                                    G_CALLBACK (cheese_camera_image_done_cb),
-                                                    camera);
+
   caps = gst_caps_new_simple ("video/x-raw-rgb",
                               "bpp", G_TYPE_INT, 24,
                               "depth", G_TYPE_INT, 24,
@@ -1086,7 +1072,6 @@ cheese_camera_init (CheeseCamera *camera)
   priv->photo_filename          = NULL;
   priv->camera_devices          = NULL;
   priv->device_name             = NULL;
-  priv->photo_handler_signal_id = 0;
   priv->current_format          = NULL;
   priv->camera_source           = NULL;
   priv->video_source            = NULL;
