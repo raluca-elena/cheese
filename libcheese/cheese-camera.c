@@ -1293,8 +1293,10 @@ cheese_camera_set_video_format (CheeseCamera *camera, CheeseVideoFormat *format)
     g_object_set (G_OBJECT (camera), "format", format, NULL);
     if (cheese_camera_is_playing (camera))
     {
+      GST_DEBUG_BIN_TO_DOT_FILE (GST_BIN (priv->camerabin), GST_DEBUG_GRAPH_SHOW_CAPS_DETAILS, "pre-caps");
       cheese_camera_stop (camera);
       cheese_camera_play (camera);
+      GST_DEBUG_BIN_TO_DOT_FILE (GST_BIN (priv->camerabin), GST_DEBUG_GRAPH_SHOW_CAPS_DETAILS, "post-caps");
     }
   }
 }
