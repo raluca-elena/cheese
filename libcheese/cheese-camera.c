@@ -1188,6 +1188,7 @@ cheese_camera_setup (CheeseCamera *camera, const char *id, GError **error)
     cheese_camera_set_error_element_not_found (error, "cluttervideosink");
   }
   g_object_set (G_OBJECT (video_sink), "async", FALSE, NULL);
+  g_object_set (G_OBJECT (video_sink), "sync", FALSE, NULL);
   g_object_set (G_OBJECT (priv->camerabin), "viewfinder-sink", video_sink, NULL);
 
   cheese_camera_set_camera_source (camera);
