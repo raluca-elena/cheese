@@ -791,6 +791,13 @@ void
 cheese_camera_start_video_recording (CheeseCamera *camera, const char *filename)
 {
   CheeseCameraPrivate *priv = CHEESE_CAMERA_GET_PRIVATE (camera);
+  gboolean ready;
+
+  g_object_get (priv->camera_source, "ready-for-capture", &ready, NULL);
+  if (!ready)
+  {
+    g_printf ("cheese_camera_start_video_recording ready=FALSE, continuing.\n");
+  }
 
   g_object_set (priv->camerabin, "mode", MODE_VIDEO, NULL);
   g_object_set (priv->camerabin, "location", filename, NULL);
