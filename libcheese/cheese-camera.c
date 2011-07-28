@@ -573,8 +573,8 @@ cheese_camera_switch_camera_device (CheeseCamera *camera)
  * @camera: a #CheeseCamera
  */
 
-void
-cheese_camera_play (CheeseCamera *camera)
+static void
+cheese_camera_set_new_caps (CheeseCamera *camera)
 {
   CheeseCameraPrivate *priv   = CHEESE_CAMERA_GET_PRIVATE (camera);
   CheeseCameraDevice  *device = g_ptr_array_index (priv->camera_devices, priv->selected_device);
@@ -597,7 +597,13 @@ cheese_camera_play (CheeseCamera *camera)
     g_object_set (priv->camerabin, "viewfinder-caps", caps, NULL);
   }
   gst_caps_unref (caps);
+}
 
+void
+cheese_camera_play (CheeseCamera *camera)
+{
+  CheeseCameraPrivate *priv   = CHEESE_CAMERA_GET_PRIVATE (camera);
+  cheese_camera_set_new_caps (camera);
   gst_element_set_state (priv->camerabin, GST_STATE_PLAYING);
   priv->pipeline_is_playing = TRUE;
 }
